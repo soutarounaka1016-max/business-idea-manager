@@ -11,6 +11,7 @@ permissions:
   contents: read
   pages: write
   id-token: write
+  issues: write
 
 concurrency:
   group: pages-${{ github.ref }}
@@ -41,8 +42,15 @@ jobs:
           retention-days: 14
 
   deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: test
     runs-on: ubuntu-latest
+    outputs:
+      page_url: ${{ steps.deployment.outputs.page_url }}
+      enable_code: ${{ steps.enable_pages.outputs.http_code }}
+      configure_outcome: ${{ steps.configure.outcome }}
+      deployment_outcome: ${{ steps.deployment.outcome }}
+      verify_outcome: ${{ steps.verify.outcome }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -53,14 +61,46 @@ jobs:
           node-version: 22
       - run: npm install
       - run: npm run build
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
+      - name: Ensure GitHub Pages uses workflow publishing
+        id: enable_pages
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          code=$(curl --silent --show-error --location \
+            --output pages-response.json \
+            --write-out "%{http_code}" \
+            --request POST \
+            --header "Accept: application/vnd.github+json" \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/pages" \
+            --data '{"build_type":"workflow"}')
+          echo "http_code=$code" >> "$GITHUB_OUTPUT"
+          cat pages-response.json || true
+          if [ "$code" != "201" ] && [ "$code" != "409" ]; then
+            exit 1
+          fi
+      - name: Configure GitHub Pages
+        id: configure
+        continue-on-error: true
+        uses: actions/configure-pages@v5
+      - name: Upload GitHub Pages artifact
+        id: upload
+        if: steps.configure.outcome == 'success'
+        continue-on-error: true
+        uses: actions/upload-pages-artifact@v3
         with:
           path: dist
       - name: Deploy to GitHub Pages
         id: deployment
+        if: steps.upload.outcome == 'success'
+        continue-on-error: true
         uses: actions/deploy-pages@v4
       - name: Verify published URL
+        id: verify
+        if: steps.deployment.outcome == 'success'
+        continue-on-error: true
         run: |
           URL="${{ steps.deployment.outputs.page_url }}"
           for attempt in 1 2 3 4 5 6; do
@@ -71,3 +111,53 @@ jobs:
             sleep 10
           done
           exit 1
+      - name: Enforce deployment success
+        if: always()
+        run: |
+          test "${{ steps.configure.outcome }}" = "success"
+          test "${{ steps.upload.outcome }}" = "success"
+          test "${{ steps.deployment.outcome }}" = "success"
+          test "${{ steps.verify.outcome }}" = "success"
+
+  report:
+    if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [test, deploy]
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Record deployment result
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TEST_RESULT: ${{ needs.test.result }}
+          DEPLOY_RESULT: ${{ needs.deploy.result }}
+          PAGE_URL: ${{ needs.deploy.outputs.page_url }}
+          ENABLE_CODE: ${{ needs.deploy.outputs.enable_code }}
+          CONFIGURE_OUTCOME: ${{ needs.deploy.outputs.configure_outcome }}
+          DEPLOYMENT_OUTCOME: ${{ needs.deploy.outputs.deployment_outcome }}
+          VERIFY_OUTCOME: ${{ needs.deploy.outputs.verify_outcome }}
+        run: |
+          cat > report.md <<EOF
+          ## GitHub Pages deployment report
+
+          - Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
+          - Commit: $GITHUB_SHA
+          - Test job: $TEST_RESULT
+          - Deploy job: $DEPLOY_RESULT
+          - Pages enable API: $ENABLE_CODE
+          - Configure Pages: $CONFIGURE_OUTCOME
+          - Deploy Pages: $DEPLOYMENT_OUTCOME
+          - Public URL verification: $VERIFY_OUTCOME
+          - Public URL: $PAGE_URL
+          EOF
+          jq -n \
+            --arg title "Pages deployment report #$GITHUB_RUN_NUMBER" \
+            --rawfile body report.md \
+            '{title: $title, body: $body}' > issue.json
+          curl --fail --silent --show-error --location \
+            --request POST \
+            --header "Accept: application/vnd.github+json" \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/issues" \
+            --data @issue.json
