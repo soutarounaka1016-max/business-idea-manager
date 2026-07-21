@@ -1,5 +1,5 @@
-import { initialData, emptyEvaluations } from './data';
-import type { AppData, BusinessIdea } from './types';
+import { createId, initialData, emptyEvaluations } from './data';
+import type { AppData, BusinessIdea, ConversationRecord } from './types';
 import { IDEA_STATUSES } from './types';
 
 export const STORAGE_KEY = 'businessIdeaManager.v1';
@@ -19,7 +19,7 @@ export const normalizeIdea = (raw: Partial<BusinessIdea>): BusinessIdea => {
   }
 
   return {
-    id: String(raw.id ?? crypto.randomUUID()),
+    id: String(raw.id ?? createId()),
     name: String(raw.name ?? ''),
     summary: String(raw.summary ?? ''),
     industry: String(raw.industry ?? ''),
@@ -40,13 +40,33 @@ export const normalizeIdea = (raw: Partial<BusinessIdea>): BusinessIdea => {
   };
 };
 
+const normalizeConversation = (raw: Partial<ConversationRecord>): ConversationRecord => ({
+  id: String(raw.id ?? createId()),
+  title: String(raw.title ?? 'ChatGPT会話'),
+  source: ['paste', 'chatgpt-export', 'sync-json', 'sync-url'].includes(String(raw.source))
+    ? (raw.source as ConversationRecord['source'])
+    : 'paste',
+  importedAt: String(raw.importedAt ?? new Date().toISOString()),
+  rawText: String(raw.rawText ?? ''),
+  summary: String(raw.summary ?? ''),
+  tags: Array.isArray(raw.tags) ? raw.tags.map(String).slice(0, 20) : [],
+  linkedIdeaIds: Array.isArray(raw.linkedIdeaIds) ? raw.linkedIdeaIds.map(String) : [],
+  syncId: raw.syncId ? String(raw.syncId) : undefined,
+});
+
 export const parseData = (value: unknown): AppData => {
   if (!value || typeof value !== 'object') throw new Error('バックアップ形式が正しくありません。');
-  const candidate = value as Partial<AppData>;
+  const candidate = value as Partial<AppData> & { schemaVersion?: number };
   if (!Array.isArray(candidate.ideas)) throw new Error('アイデア一覧が含まれていません。');
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     ideas: candidate.ideas.map((idea) => normalizeIdea(idea)),
+    conversations: Array.isArray(candidate.conversations)
+      ? candidate.conversations.map((item) => normalizeConversation(item))
+      : [],
+    processedSyncIds: Array.isArray(candidate.processedSyncIds)
+      ? candidate.processedSyncIds.map(String).slice(-500)
+      : [],
   };
 };
 
