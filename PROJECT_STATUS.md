@@ -35,6 +35,7 @@
 - 横方向の画面はみ出し確認: 成功
 - GitHub Pagesデプロイ: 成功
 - 公開URLのHTTP確認: 成功
+- 最終mainコミット状態 `business-idea-manager/pages-deploy`: success
 
 ## 保存と互換性
 
