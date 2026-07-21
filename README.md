@@ -2,6 +2,8 @@
 
 思いついた事業アイデアを、調査・仮説・検証・改善・事業化候補まで育てるための個人用Webアプリです。iPad Safariの横向きを最優先にし、インストール不要でGitHub Pagesから利用できます。
 
+**公開版:** https://soutarounaka1016-max.github.io/business-idea-manager/
+
 ## 主な機能
 
 - アイデアカードの追加・編集・削除
