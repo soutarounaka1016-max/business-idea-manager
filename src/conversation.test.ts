@@ -3,6 +3,7 @@ import {
   applyConversationDraft,
   buildDraftFromSyncPayload,
   buildDraftFromText,
+  buildIntegrationPrompt,
   parseChatGptExport,
   parseSyncPayload,
   readSyncPayloadFromLocation,
@@ -73,5 +74,29 @@ describe('conversation sync', () => {
 
     expect(payload?.syncId).toBe('url-1');
     expect(payload?.items.map((item) => item.kind)).toEqual(['idea', 'task']);
+  });
+
+  it('ChatGPTの1タップ同期リンクをハッシュから読み取る', () => {
+    const payload = readSyncPayloadFromLocation({
+      search: '',
+      hash: '#sync=1&syncId=one-tap-1&title=%E5%A1%BEAI%E3%81%AE%E6%A4%9C%E8%A8%8E&summary=%E5%8F%97%E4%BB%98%E6%A5%AD%E5%8B%99%E3%82%92%E8%87%AA%E5%8B%95%E5%8C%96&idea=%E5%A1%BE%E5%90%91%E3%81%91%E5%8F%97%E4%BB%98AI&problem=%E5%95%8F%E3%81%84%E5%90%88%E3%82%8F%E3%81%9B%E5%AF%BE%E5%BF%9C%E3%81%AB%E6%99%82%E9%96%93%E3%81%8C%E3%81%8B%E3%81%8B%E3%82%8B&task=%E5%A1%BE3%E6%A0%A1%E3%81%B8%E8%81%9E%E3%81%8F',
+    } as Location);
+
+    expect(payload?.conversation.title).toBe('塾AIの検討');
+    expect(payload?.conversation.summary).toBe('受付業務を自動化');
+    expect(payload?.items).toEqual([
+      { kind: 'idea', text: '塾向け受付AI' },
+      { kind: 'problem', text: '問い合わせ対応に時間がかかる' },
+      { kind: 'task', text: '塾3校へ聞く' },
+    ]);
+  });
+
+  it('プロジェクト指示用の1タップ同期設定文を作る', () => {
+    const prompt = buildIntegrationPrompt('https://example.com/business-idea-manager/');
+
+    expect(prompt).toContain('https://example.com/business-idea-manager/#sync=1');
+    expect(prompt).toContain('事業アイデア管理へ1タップ追加');
+    expect(prompt).toContain('URLエンコード');
+    expect(prompt).toContain('コピー＆ペースト依頼は不要');
   });
 });
