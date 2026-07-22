@@ -1,32 +1,54 @@
-# 事業アイデア管理アプリ
+# Business Idea Manager
 
-思いついた事業アイデアを、調査・仮説・検証・改善・事業化候補まで育てるための個人用Webアプリです。iPad Safariの横向きを最優先にし、インストール不要でGitHub Pagesから利用できます。
+事業アイデア、仮説、調査記録、評価、次の行動を一画面で管理する個人用Webアプリです。
 
-**公開版:** https://soutarounaka1016-max.github.io/business-idea-manager/
+公開URL: https://soutarounaka1016-max.github.io/business-idea-manager/
 
 ## 主な機能
 
-- アイデアカードの追加・編集・削除
-- 8段階の状態と5段階の優先度
-- 7観点の評価と評価理由
-- 仮説、確認方法、成功条件、検証結果
-- 顧客聞き取り・競合調査の記録
-- 期限・完了チェック付き「次にやること」
-- ダッシュボード、名前・状態・業界検索
-- localStorage保存、JSONバックアップ・復元
-- ライト・ダークモード
+- 事業アイデアの追加・編集・削除
+- 状態、優先度、7項目評価
+- 仮説、調査記録、次の行動
+- 検索と絞り込み
+- 今日の行動と優先度ランキング
+- localStorage保存
+- JSONバックアップと復元
+- ダークモード
+- iPad、スマートフォン、デスクトップ対応
+
+## ChatGPT同期
+
+### フェーズ1
+
+- ChatGPT会話の貼り付け
+- ChatGPTデータエクスポート `conversations.json` の読み込み
+- アイデア、課題、仮説、行動、メモの抽出
+- 反映前の確認と編集
+
+### フェーズ2
+
+- 顧客、市場、営業、収益、機能、リスク、検証の自動タグ付け
+- 既存アイデアへの反映先候補
+- 重複する仮説と行動の登録防止
+- 会話履歴と関連アイデアの保存
+
+### フェーズ3
+
+- `chat-sync/v1` 標準同期JSON
+- 同期URL
+- 同一オリジン `postMessage`
+- `syncId` による二重同期防止
+- ChatGPT連携プロンプトのコピー
+
+詳細: [docs/CHATGPT_SYNC.md](docs/CHATGPT_SYNC.md)
 
 ## 開発
 
 ```bash
 npm install
-npm run dev
 npm test
 npm run build
-npx playwright install chromium webkit
 npm run test:e2e
 ```
 
-## 保存と互換性
-
-保存キーは `businessIdeaManager.v1`、データ形式は `schemaVersion: 1` です。読み込み時に不足項目を補完するため、第1版の保存データを維持したまま項目追加へ対応できます。
+GitHub Actionsでテスト、ビルド、Playwright確認、GitHub Pages公開を行います。

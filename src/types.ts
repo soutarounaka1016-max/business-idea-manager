@@ -73,7 +73,68 @@ export interface BusinessIdea {
   nextActions: NextAction[];
 }
 
+export type ConversationSource = 'paste' | 'chatgpt-export' | 'sync-json' | 'sync-url';
+
+export interface ConversationRecord {
+  id: string;
+  title: string;
+  source: ConversationSource;
+  importedAt: string;
+  rawText: string;
+  summary: string;
+  tags: string[];
+  linkedIdeaIds: string[];
+  syncId?: string;
+}
+
 export interface AppData {
-  schemaVersion: 1;
+  schemaVersion: 2;
   ideas: BusinessIdea[];
+  conversations: ConversationRecord[];
+  processedSyncIds: string[];
+}
+
+export type ExtractedItemKind = 'idea' | 'hypothesis' | 'problem' | 'task' | 'note';
+
+export interface ExtractedItem {
+  id: string;
+  kind: ExtractedItemKind;
+  text: string;
+  selected: boolean;
+  targetIdeaId: string;
+  suggestedIdeaName?: string;
+  industry?: string;
+  targetCustomer?: string;
+  dueDate?: string;
+}
+
+export interface ConversationDraft {
+  record: ConversationRecord;
+  items: ExtractedItem[];
+}
+
+export interface SyncPayloadItem {
+  kind: ExtractedItemKind;
+  text: string;
+  targetIdeaName?: string;
+  industry?: string;
+  targetCustomer?: string;
+  dueDate?: string;
+}
+
+export interface SyncPayload {
+  version: 'chat-sync/v1';
+  syncId: string;
+  conversation: {
+    title: string;
+    summary?: string;
+    sourceUrl?: string;
+  };
+  items: SyncPayloadItem[];
+}
+
+export interface ConversationCandidate {
+  id: string;
+  title: string;
+  rawText: string;
 }
