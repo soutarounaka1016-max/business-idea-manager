@@ -3,6 +3,9 @@ name: Verify app
 on:
   pull_request:
     branches: [main]
+  push:
+    branches:
+      - agent/chatgpt-conversation-sync
   workflow_dispatch:
 
 permissions:
