@@ -164,7 +164,7 @@ export const readSyncPayloadFromLocation = (locationLike: Pick<Location, 'search
   try { return parseSyncPayload(decodeBase64Url(encoded)); } catch { return null; }
 };
 
-export const buildIntegrationPrompt = (appUrl: string): string => `この会話から事業管理に必要な情報だけを抽出してください。最後に説明文ではなく、versionをchat-sync/v1、syncIdを一意のID、conversationにtitleとsummary、itemsにkind（idea/problem/hypothesis/task/note）・text・targetIdeaName・industry・targetCustomer・dueDateを含むJSONだけをコードブロックで出力してください。同じ内容は重複させず、会話にない事実を追加しないでください。出力したJSONは ${appUrl} の「ChatGPT同期」へ貼り付けます。`;
+export const buildIntegrationPrompt = (appUrl: string): string => `このChatGPTプロジェクトでは、事業アイデア、顧客課題、仮説、調査・実装タスク、重要メモが会話に含まれる場合、回答の最後に事業アイデア管理アプリへ取り込むMarkdownリンクを1つ追加してください。リンク形式は必ず [事業アイデア管理へ1タップ追加](${appUrl}#sync=1&syncId=一意のID&title=会話タイトル&summary=短い要約&idea=アイデア&problem=課題&hypothesis=仮説&task=次の行動&note=重要メモ) とします。各値はencodeURIComponent相当でURLエンコードしてください。同じ分類が複数ある場合はideaやtaskなど同じ名前のパラメータを複数並べてください。会話にない事実を追加せず、重複を除き、個人情報・秘密情報・会話全文はリンクへ含めないでください。事業管理へ追加すべき内容がない回答ではリンクを出さないでください。リンク以外のJSON出力や、ユーザーへのコピー＆ペースト依頼は不要です。`;
 
 export interface ApplyDraftResult { data: AppData; createdIdeaIds: string[]; updatedIdeaIds: string[]; duplicateSync: boolean }
 export const applyConversationDraft = (current: AppData, draft: ConversationDraft): ApplyDraftResult => {
