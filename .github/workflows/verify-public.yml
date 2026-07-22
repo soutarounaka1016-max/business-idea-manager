@@ -1,0 +1,80 @@
+name: Verify published app
+
+on:
+  workflow_run:
+    workflows: ["Test and deploy"]
+    types: [completed]
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  verify-public:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      PUBLIC_URL: https://soutarounaka1016-max.github.io/business-idea-manager/
+      DEPLOYED_SHA: ${{ github.event.workflow_run.head_sha }}
+    steps:
+      - name: Verify deployed bundle
+        id: verify
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -uo pipefail
+          origin="https://soutarounaka1016-max.github.io"
+
+          for attempt in $(seq 1 20); do
+            html="$(curl -fsSL --connect-timeout 10 -H 'Cache-Control: no-cache' "${PUBLIC_URL}?verify=${DEPLOYED_SHA}-${attempt}" 2>/dev/null || true)"
+            script_path="$(printf '%s' "$html" | grep -oE '<script[^>]+src="[^"]+\.js"' | head -n 1 | sed -E 's/.*src="([^"]+)".*/\1/' || true)"
+
+            if [[ -n "$script_path" ]]; then
+              if [[ "$script_path" == http* ]]; then
+                script_url="$script_path"
+              elif [[ "$script_path" == /* ]]; then
+                script_url="${origin}${script_path}"
+              else
+                script_url="${PUBLIC_URL}${script_path}"
+              fi
+
+              bundle="$(curl -fsSL --connect-timeout 10 -H 'Cache-Control: no-cache' "${script_url}?verify=${DEPLOYED_SHA}-${attempt}" 2>/dev/null || true)"
+              if printf '%s' "$bundle" | grep -Fq 'ChatGPT同期' && printf '%s' "$bundle" | grep -Fq 'chat-sync/v1'; then
+                echo "Published bundle contains the ChatGPT sync feature."
+                exit 0
+              fi
+            fi
+
+            sleep 15
+          done
+
+          echo "Published bundle did not contain the expected feature before timeout."
+          exit 1
+
+      - name: Publish commit status
+        uses: actions/github-script@v7
+        env:
+          VERIFY_OUTCOME: ${{ steps.verify.outcome }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const success = process.env.VERIFY_OUTCOME === 'success';
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: process.env.DEPLOYED_SHA,
+              state: success ? 'success' : 'failure',
+              context: 'business-idea-manager/public-url',
+              description: success
+                ? 'Published app contains ChatGPT sync'
+                : 'Published app verification failed',
+              target_url: process.env.PUBLIC_URL,
+            });
+
+      - name: Fail when public verification failed
+        if: steps.verify.outcome != 'success'
+        run: exit 1
