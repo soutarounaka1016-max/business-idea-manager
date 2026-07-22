@@ -4,7 +4,7 @@
 
 ## 状態
 
-ChatGPT会話同期 フェーズ1〜3 実装完了。自動テストと公開確認中。
+ChatGPT会話同期 フェーズ1〜3 実装・自動確認完了。main反映と公開確認待ち。
 
 公開URL: https://soutarounaka1016-max.github.io/business-idea-manager/
 
@@ -34,16 +34,19 @@ ChatGPT会話同期 フェーズ1〜3 実装完了。自動テストと公開確
 - 別オリジンのpostMessageは拒否
 - APIキーをフロントエンドへ保存しない
 
-## 自動確認対象
+## 自動確認結果
 
-- 会話分類の単体テスト
-- ChatGPTエクスポート解析テスト
-- 同期JSON反映テスト
-- 二重同期防止テスト
-- schemaVersion移行テスト
-- React画面テスト
-- Playwright主要操作テスト
-- 本番ビルドとGitHub Pages公開
+- 会話分類の単体テスト: 成功
+- ChatGPTエクスポート解析テスト: 成功
+- 同期JSON反映テスト: 成功
+- 二重同期防止テスト: 成功
+- schemaVersion 1から2への移行テスト: 成功
+- 既存のReact画面テスト: 成功
+- 本番ビルド: 成功
+- Playwright Chromium iPad横向き・縦向き: 成功
+- Playwright WebKit iPad横向き・縦向き: 成功
+- 会話取り込み、反映、保存、再読み込み: 成功
+- 独立した2系統のGitHub Actions検証: 成功
 
 ## 残る制約
 
